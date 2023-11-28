@@ -15,24 +15,26 @@ import textwrap
 import datetime
 import warnings
 
+from pathlib import Path
+
 # Ensure correct importlib-resources function imported
 if sys.version_info < (3, 9):
-    import importlib_resources                              # PyPI
+    import importlib_resources  # PyPI
 else:
-    import importlib.resources as importlib_resources       # importlib.resources
+    import importlib.resources as importlib_resources  # importlib.resources
 
-__version__ = '1.2.2'
-__author__ = 'Jamie Heather'
-__email__ = 'jheather@mgh.harvard.edu'
+__version__ = "1.2.2"
+__author__ = "Jamie Heather"
+__email__ = "jheather@mgh.harvard.edu"
 
 sys.tracebacklimit = 0  # comment when debugging
 
-
-data_files = importlib_resources.files("Data")
-additional_genes_file = str(data_files / 'additional-genes.fasta')
-linkers_file = str(data_files / 'linkers.tsv')
+# change the path to the repo directory on Streamlit Cloud
+data_files = Path("/mount/src/receptorgpt/stitchr_data")
+additional_genes_file = str(data_files / "additional-genes.fasta")
+linkers_file = str(data_files / "linkers.tsv")
 data_dir = os.path.dirname(additional_genes_file)
-gui_examples_dir = os.path.join(data_dir, 'GUI-Examples')
+gui_examples_dir = os.path.join(data_dir, "GUI-Examples")
 
 
 def custom_formatwarning(warning_msg, *args, **kwargs):
@@ -40,7 +42,7 @@ def custom_formatwarning(warning_msg, *args, **kwargs):
     Function to make warnings.warn output just the warning text, not the underlying code
     See https://stackoverflow.com/questions/2187269/print-only-the-message-on-warnings
     """
-    return str(warning_msg) + '\n'
+    return str(warning_msg) + "\n"
 
 
 def read_fa(ff):
@@ -50,27 +52,29 @@ def read_fa(ff):
     https://github.com/lh3/readfq/blob/master/readfq.py
     """
 
-    last = None                                 # this is a buffer keeping the last unprocessed line
-    while True:                                 # mimic closure
-        if not last:                            # the first record or a record following a fastq
-            for l in ff:                        # search for the start of the next record
-                if l[0] in '>':                 # fasta header line
-                    last = l[:-1]               # save this line
+    last = None  # this is a buffer keeping the last unprocessed line
+    while True:  # mimic closure
+        if not last:  # the first record or a record following a fastq
+            for l in ff:  # search for the start of the next record
+                if l[0] in ">":  # fasta header line
+                    last = l[:-1]  # save this line
                     break
         if not last:
             break
         name, seqs, last = last[1:], [], None
-        for l in ff:                            # read the sequence
-            if l[0] in '>':
+        for l in ff:  # read the sequence
+            if l[0] in ">":
                 last = l[:-1]
                 break
             seqs.append(l[:-1])
-        if not last or last[0] != '+':          # this is a fasta record
-            yield name, ''.join(seqs), None     # yield a fasta record
+        if not last or last[0] != "+":  # this is a fasta record
+            yield name, "".join(seqs), None  # yield a fasta record
             if not last:
                 break
         else:
-            raise IOError("Input file does not appear to be a FASTA file - please check and try again")
+            raise IOError(
+                "Input file does not appear to be a FASTA file - please check and try again"
+            )
 
 
 def fastafy(gene, seq_line):
@@ -110,37 +114,47 @@ def get_chain(v, j):
     :return: TRA or TRB (the chain in use) or throw an error
     """
 
-    if v.startswith('TRB') and j.startswith('TRB'):
-        return 'TRB'
-    elif (v.startswith('TRA') or v.startswith('TRD')) and j.startswith('TRA'):
-        return 'TRA'
-    elif v.startswith('TRG') and j.startswith('TRG'):
-        return 'TRG'
-    elif v.startswith('TRD') and j.startswith('TRD'):
-        return 'TRD'
+    if v.startswith("TRB") and j.startswith("TRB"):
+        return "TRB"
+    elif (v.startswith("TRA") or v.startswith("TRD")) and j.startswith("TRA"):
+        return "TRA"
+    elif v.startswith("TRG") and j.startswith("TRG"):
+        return "TRG"
+    elif v.startswith("TRD") and j.startswith("TRD"):
+        return "TRD"
 
-    elif v.startswith('IGH') and j.startswith('IGH'):
-        return 'IGH'
-    elif v.startswith('IGL') and j.startswith('IGL'):
-        return 'IGL'
-    elif v.startswith('IGK') and j.startswith('IGK'):
-        return 'IGK'
+    elif v.startswith("IGH") and j.startswith("IGH"):
+        return "IGH"
+    elif v.startswith("IGL") and j.startswith("IGL"):
+        return "IGL"
+    elif v.startswith("IGK") and j.startswith("IGK"):
+        return "IGK"
 
     else:
-        raise ValueError("Please ensure you're providing full IMGT gene names (allele number optional), " +
-                         "both from the same chain (alpha or beta). Should start \'TR[ABGD]\'.")
+        raise ValueError(
+            "Please ensure you're providing full IMGT gene names (allele number optional), "
+            + "both from the same chain (alpha or beta). Should start 'TR[ABGD]'."
+        )
 
 
 def find_species_covered():
     """
     :return: list of data directories for different species available
     """
-    species_list = [x for x in os.listdir(data_dir) if os.path.isdir(os.path.normpath(os.path.join(data_dir, x))) and
-                    x != 'kazusa' and x != 'GUI-Examples' and '__' not in x]
+    species_list = [
+        x
+        for x in os.listdir(data_dir)
+        if os.path.isdir(os.path.normpath(os.path.join(data_dir, x)))
+        and x != "kazusa"
+        and x != "GUI-Examples"
+        and "__" not in x
+    ]
 
     if not species_list:
-        raise ValueError("No species data detected. Please run stitchrdl first, or otherwise install data in the Data"
-                         " directory (" + data_dir + ").")
+        raise ValueError(
+            "No species data detected. Please run stitchrdl first, or otherwise install data in the Data"
+            " directory (" + data_dir + ")."
+        )
     species_list.sort()
     return species_list
 
@@ -156,7 +170,7 @@ def infer_species(path_to_file):
     if len(species_search) == 1:
         return species_search[0]
     else:
-        return ''
+        return ""
 
 
 def sort_input(cmd_line_args):
@@ -168,22 +182,29 @@ def sort_input(cmd_line_args):
     species_dirs = find_species_covered()
 
     # Check the species is an appropriate one
-    if tidied_args['species'] not in species_dirs:
-        raise ValueError("Invalid species option given. Current options in Data directory are: "
-                         + ', '.join(species_dirs))
+    if tidied_args["species"] not in species_dirs:
+        raise ValueError(
+            "Invalid species option given. Current options in Data directory are: "
+            + ", ".join(species_dirs)
+        )
 
     # If additional optional 5'/3' sequences are provided, check they are valid DNA sequences
-    for end in ['5', '3']:
-        if cmd_line_args[end + '_prime_seq']:
-            if not dna_check(cmd_line_args[end + '_prime_seq']):
-                raise IOError("Provided " + end + "\' sequence contains non-DNA characters.")
+    for end in ["5", "3"]:
+        if cmd_line_args[end + "_prime_seq"]:
+            if not dna_check(cmd_line_args[end + "_prime_seq"]):
+                raise IOError(
+                    "Provided " + end + "' sequence contains non-DNA characters."
+                )
 
-            if len(cmd_line_args[end + '_prime_seq']) % 3 != 0:
+            if len(cmd_line_args[end + "_prime_seq"]) % 3 != 0:
                 warnings.warn(
-                    "Warning: length of " + end + "\' sequence provided is not divisible by 3. "
-                                                  "Ensure sequence is padded properly if needed to be in frame.")
+                    "Warning: length of "
+                    + end
+                    + "' sequence provided is not divisible by 3. "
+                    "Ensure sequence is padded properly if needed to be in frame."
+                )
 
-    chain = get_chain(tidied_args['v'], tidied_args['j'])
+    chain = get_chain(tidied_args["v"], tidied_args["j"])
     finished_args = autofill_input(tidied_args, chain)
     return finished_args, chain
 
@@ -196,19 +217,18 @@ def tidy_input(cmd_line_args):
 
     out_args = {}
     for arg in cmd_line_args:
-
         if isinstance(cmd_line_args[arg], str):
-            if 'path' in arg:
+            if "path" in arg:
                 out_args[arg] = cmd_line_args[arg]
             else:
                 out_args[arg] = cmd_line_args[arg].upper()
         else:
             out_args[arg] = cmd_line_args[arg]
 
-    if cmd_line_args['name']:
-        out_args['name'] = cmd_line_args['name']
+    if cmd_line_args["name"]:
+        out_args["name"] = cmd_line_args["name"]
     else:
-        out_args['name'] = ''
+        out_args["name"] = ""
 
     return out_args
 
@@ -221,40 +241,42 @@ def autofill_input(cmd_line_args, chain):
     """
 
     # Default constant regions for humans and mice
-    if not cmd_line_args['c']:
-        if cmd_line_args['species'] in ['HUMAN', 'MOUSE']:
-            if chain == 'TRA':
-                cmd_line_args['c'] = 'TRAC*01'
-            elif chain == 'TRB':
-                if 'TRBJ1' in cmd_line_args['j']:
-                    cmd_line_args['c'] = 'TRBC1*01'
-                elif 'TRBJ2' in cmd_line_args['j']:
-                    cmd_line_args['c'] = 'TRBC2*01'
-            elif chain == 'TRD':
-                cmd_line_args['c'] = 'TRDC*01'
-            elif chain == 'TRG':
-                if cmd_line_args['species'] == 'HUMAN':
-                    if 'TRGJ2' in cmd_line_args['j'] or 'TRGJP2' in cmd_line_args['j']:
-                        cmd_line_args['c'] = 'TRGC2*02'
+    if not cmd_line_args["c"]:
+        if cmd_line_args["species"] in ["HUMAN", "MOUSE"]:
+            if chain == "TRA":
+                cmd_line_args["c"] = "TRAC*01"
+            elif chain == "TRB":
+                if "TRBJ1" in cmd_line_args["j"]:
+                    cmd_line_args["c"] = "TRBC1*01"
+                elif "TRBJ2" in cmd_line_args["j"]:
+                    cmd_line_args["c"] = "TRBC2*01"
+            elif chain == "TRD":
+                cmd_line_args["c"] = "TRDC*01"
+            elif chain == "TRG":
+                if cmd_line_args["species"] == "HUMAN":
+                    if "TRGJ2" in cmd_line_args["j"] or "TRGJP2" in cmd_line_args["j"]:
+                        cmd_line_args["c"] = "TRGC2*02"
                     else:
-                        cmd_line_args['c'] = 'TRGC1*01'
-                elif cmd_line_args['species'] == 'MOUSE':
-                    if 'TRGJ1' in cmd_line_args['j']:
-                        cmd_line_args['c'] = 'TRGC1*01'
-                    elif 'TRGJ2' in cmd_line_args['j']:
-                        cmd_line_args['c'] = 'TRGC2*cmd_line01'
-                    elif 'TRGJ3' in cmd_line_args['j']:
-                        cmd_line_args['c'] = 'TRGC3*01'
-                    elif 'TRGJ4' in cmd_line_args['j']:
-                        cmd_line_args['c'] = 'TRGC4*01'
+                        cmd_line_args["c"] = "TRGC1*01"
+                elif cmd_line_args["species"] == "MOUSE":
+                    if "TRGJ1" in cmd_line_args["j"]:
+                        cmd_line_args["c"] = "TRGC1*01"
+                    elif "TRGJ2" in cmd_line_args["j"]:
+                        cmd_line_args["c"] = "TRGC2*cmd_line01"
+                    elif "TRGJ3" in cmd_line_args["j"]:
+                        cmd_line_args["c"] = "TRGC3*01"
+                    elif "TRGJ4" in cmd_line_args["j"]:
+                        cmd_line_args["c"] = "TRGC4*01"
 
         else:
-            raise IOError("Constant region cannot be automatically inferred for non-human/non-mouse TCRs - "
-                          "please explicitly specify the relevant constant region.")
+            raise IOError(
+                "Constant region cannot be automatically inferred for non-human/non-mouse TCRs - "
+                "please explicitly specify the relevant constant region."
+            )
 
     # Leader region (assuming the proximal L for that V is used)
-    if not cmd_line_args['l']:
-        cmd_line_args['l'] = cmd_line_args['v']
+    if not cmd_line_args["l"]:
+        cmd_line_args["l"] = cmd_line_args["v"]
 
     return cmd_line_args
 
@@ -269,13 +291,17 @@ def get_imgt_data(tcr_chain, gene_types, species):
     """
 
     # Run some basic sanity/input file checks
-    if tcr_chain not in ['TRA', 'TRB', 'TRG', 'TRD', 'IGH', 'IGL', 'IGK']:
-        raise ValueError("Incorrect chain detected (" + tcr_chain + "), cannot get IMGT data. ")
+    if tcr_chain not in ["TRA", "TRB", "TRG", "TRD", "IGH", "IGL", "IGK"]:
+        raise ValueError(
+            "Incorrect chain detected (" + tcr_chain + "), cannot get IMGT data. "
+        )
 
-    in_file_path = os.path.join(data_dir, species, tcr_chain + '.fasta')
+    in_file_path = os.path.join(data_dir, species, tcr_chain + ".fasta")
     if not os.path.isfile(in_file_path):
-        raise IOError(tcr_chain + '.fasta not detected in the Data directory. '
-                                  'Please check data exists for this species/locus combination. ')
+        raise IOError(
+            tcr_chain + ".fasta not detected in the Data directory. "
+            "Please check data exists for this species/locus combination. "
+        )
 
     # Read in the data to a nested dict
     tcr_data = {}
@@ -285,20 +311,22 @@ def get_imgt_data(tcr_chain, gene_types, species):
     functionality = coll.defaultdict(nest)
     partial_genes = coll.defaultdict(nest)
 
-    with open(in_file_path, 'r') as in_file:
+    with open(in_file_path, "r") as in_file:
         for fasta_id, seq, blank in read_fa(in_file):
-            bits = fasta_id.split('|')
+            bits = fasta_id.split("|")
             if len(bits) < 13:
-                raise IOError("Input TCR FASTA file does not fit the IMGT header format. ")
+                raise IOError(
+                    "Input TCR FASTA file does not fit the IMGT header format. "
+                )
 
-            gene, allele = bits[1].split('*')
+            gene, allele = bits[1].split("*")
             functionality_call = bits[3]
-            seq_type = fasta_id.split('~')[1]
+            seq_type = fasta_id.split("~")[1]
             partial_flag = bits[13]
 
             functionality[gene][allele] = functionality_call
 
-            if 'partial' in partial_flag:
+            if "partial" in partial_flag:
                 partial_genes[gene][allele] = partial_flag
             else:
                 tcr_data[seq_type][gene][allele] = seq.upper()
@@ -315,7 +343,12 @@ def strip_functionality(functionality_str):
     :param functionality_str: functionality string as present in an IMGT FASTA header
     :return: the core functionality (F/ORF/P) minus any brackets
     """
-    return functionality_str.replace('(', '').replace(')', '').replace('[', '').replace(']', '')
+    return (
+        functionality_str.replace("(", "")
+        .replace(")", "")
+        .replace("[", "")
+        .replace("]", "")
+    )
 
 
 def get_additional_genes(imgt_data, imgt_functionality):
@@ -325,31 +358,51 @@ def get_additional_genes(imgt_data, imgt_functionality):
     :return: the same dicts supplemented with any genes found in the 'additional genes.fasta' file
     """
 
-    with open(data_dir + 'additional-genes.fasta', 'r') as in_file:
+    with open(data_dir + "additional-genes.fasta", "r") as in_file:
         for fasta_id, seq, blank in read_fa(in_file):
-            bits = fasta_id.split('|')
+            bits = fasta_id.split("|")
 
             if len(bits) < 5:
-                raise IOError("Sequence in additional-genes.fasta doesn't have enough fields in header: " + fasta_id)
+                raise IOError(
+                    "Sequence in additional-genes.fasta doesn't have enough fields in header: "
+                    + fasta_id
+                )
 
-            if '*' in bits[1]:
-                gene, allele = bits[1].upper().split('*')
+            if "*" in bits[1]:
+                gene, allele = bits[1].upper().split("*")
             else:
-                raise IOError("Sequence in additional-genes.fasta doesn't have correct gene name format ('" + bits[1]
-                              + "'): " + fasta_id)
+                raise IOError(
+                    "Sequence in additional-genes.fasta doesn't have correct gene name format ('"
+                    + bits[1]
+                    + "'): "
+                    + fasta_id
+                )
 
             if bits[3]:
-                functionality_call = bits[3].replace('(', '').replace(')', '').replace('[', '').replace(']', '')
+                functionality_call = (
+                    bits[3]
+                    .replace("(", "")
+                    .replace(")", "")
+                    .replace("[", "")
+                    .replace("]", "")
+                )
             else:
-                functionality_call = 'F'
+                functionality_call = "F"
 
-            if '~' in fasta_id:
-                seq_type = fasta_id.split('~')[1]
+            if "~" in fasta_id:
+                seq_type = fasta_id.split("~")[1]
                 if seq_type not in regions.values():
-                    raise IOError("Sequence in additional-genes.fasta doesn't have valid gene type ('" + seq_type + "')"
-                                  ": " + fasta_id)
+                    raise IOError(
+                        "Sequence in additional-genes.fasta doesn't have valid gene type ('"
+                        + seq_type
+                        + "')"
+                        ": " + fasta_id
+                    )
             else:
-                raise IOError("Sequence in additional-genes.fasta doesn't have the required '~' character: " + fasta_id)
+                raise IOError(
+                    "Sequence in additional-genes.fasta doesn't have the required '~' character: "
+                    + fasta_id
+                )
 
             imgt_data[seq_type][gene][allele] = seq
             imgt_functionality[gene][allele] = functionality_call
@@ -368,44 +421,58 @@ def get_preferred_alleles(path_to_pa_file, gene_types, imgt_data, partiality, lo
     """
 
     if not os.path.isfile(path_to_pa_file):
-        raise IOError("Could not find a preferred allele file at this path: " + path_to_pa_file
-                      + ", despite the '-p' flag being used. Please check path. ")
+        raise IOError(
+            "Could not find a preferred allele file at this path: "
+            + path_to_pa_file
+            + ", despite the '-p' flag being used. Please check path. "
+        )
 
     preferences = {}
     for gene_type in gene_types:
         preferences[gene_type] = coll.defaultdict(nest)
 
     line_count = 0
-    with open(path_to_pa_file, 'r') as in_file:
+    with open(path_to_pa_file, "r") as in_file:
         for line in in_file:
-            bits = line.rstrip().split('\t')
+            bits = line.rstrip().split("\t")
             if line_count == 0:
                 header = bits
             else:
                 pref_gene, pref_allele, pref_region, pref_locus, pref_source = bits
 
-                base_warning = "Requested preferred allele " + pref_gene + "*" + pref_allele + " cannot be used for " \
-                               "the " + pref_region + " region, "
+                base_warning = (
+                    "Requested preferred allele "
+                    + pref_gene
+                    + "*"
+                    + pref_allele
+                    + " cannot be used for "
+                    "the " + pref_region + " region, "
+                )
 
                 # Only process those which are labelled as being involved in the locus under consideration
-                covered_loci = pref_locus.replace(' ', '').split(',')
+                covered_loci = pref_locus.replace(" ", "").split(",")
                 if locus not in covered_loci:
                     # Silently ignore other loci's preferred alleles
                     continue
 
                 # Check that provided preference is valid, present in the data, and not a partial gene
                 if pref_region not in regions.values():
-                    warnings.warn(base_warning +
-                                  "as this is not a valid option. ")
+                    warnings.warn(base_warning + "as this is not a valid option. ")
                 elif pref_gene not in imgt_data[pref_region]:
-                    warnings.warn(base_warning +
-                                  "as this gene is not present in the input FASTA data for this species. ")
+                    warnings.warn(
+                        base_warning
+                        + "as this gene is not present in the input FASTA data for this species. "
+                    )
                 elif pref_allele not in imgt_data[pref_region][pref_gene]:
-                    warnings.warn(base_warning +
-                                  "as this allele is not present in the input FASTA data for this species. ")
+                    warnings.warn(
+                        base_warning
+                        + "as this allele is not present in the input FASTA data for this species. "
+                    )
                 elif pref_allele in partiality[pref_gene][pref_allele]:
-                    warnings.warn(base_warning +
-                                  "as the sequence for this allele is in the input data is flagged as partial. ")
+                    warnings.warn(
+                        base_warning
+                        + "as the sequence for this allele is in the input data is flagged as partial. "
+                    )
                 else:
                     preferences[pref_region][pref_gene] = pref_allele
 
@@ -435,8 +502,8 @@ def find_stop(seq):
     :param seq: a translated amino acid sequence
     :return: the position of the first stop codon (*) inside - if none, return length of whole sequence
     """
-    if '*' in seq:
-        return seq.index('*')
+    if "*" in seq:
+        return seq.index("*")
     else:
         return len(seq)
 
@@ -457,12 +524,11 @@ def tidy_c_term(c_term_nt, skip, c_region_motifs, c_gene):
 
     # Try every frame, look for the frame that contains the appropriate sequence
     for f in range(4):
-
         translated = translate_nt(c_term_nt[f:])
         translations[f] = translated
 
         # If C gene check skips is selected, OR if the constant region isn't listed in the C-region-motifs...
-        if skip or c_gene not in c_region_motifs['start']:
+        if skip or c_gene not in c_region_motifs["start"]:
             # Try to figure out the best translation frame, by picking the one with the longest pre-stop sequence
             for frame in translations:
                 stop = find_stop(translations[frame])
@@ -472,30 +538,45 @@ def tidy_c_term(c_term_nt, skip, c_region_motifs, c_gene):
 
             if f == 3:
                 if best == 2:
-                    warnings.warn("Note: expected reading frame " + str(best) + " used for translating C terminus. ")
+                    warnings.warn(
+                        "Note: expected reading frame "
+                        + str(best)
+                        + " used for translating C terminus. "
+                    )
                 else:
-                    warnings.warn("Warning: reading frame " + str(best) + " used for translating C terminus, "
-                                  "instead of the expected reading frame 2 - "
-                                  "double check your input/output sequences are correct. ")
+                    warnings.warn(
+                        "Warning: reading frame "
+                        + str(best)
+                        + " used for translating C terminus, "
+                        "instead of the expected reading frame 2 - "
+                        "double check your input/output sequences are correct. "
+                    )
 
                 return c_term_nt[best:], translations[best]
 
         # ... otherwise if C gene check skips not selected, OR if the constant region is listed in the motifs
-        if not skip or c_gene in c_region_motifs['start']:
+        if not skip or c_gene in c_region_motifs["start"]:
             # Use the defined constant region motif
-            if c_region_motifs['start'][c_gene] in translated:
-
+            if c_region_motifs["start"][c_gene] in translated:
                 # Account for late EX4UTR stop codons
-                if c_gene in c_region_motifs['stop']:
-                    stop_index_aa = translated.index(c_region_motifs['stop'][c_gene])
-                    c_term_nt = c_term_nt[:(stop_index_aa * 3) + f]  # And offset by the frame to prevent trailing nt
+                if c_gene in c_region_motifs["stop"]:
+                    stop_index_aa = translated.index(c_region_motifs["stop"][c_gene])
+                    c_term_nt = c_term_nt[
+                        : (stop_index_aa * 3) + f
+                    ]  # And offset by the frame to prevent trailing nt
                     translated = translate_nt(c_term_nt[f:])
 
-                    if 'UTR' not in c_region_motifs['exons'][c_gene]:
-                        warnings.warn("Warning: the constant region '" + c_gene + "' being used contains a stop codon, "
-                                      "yet its exon label (" + c_region_motifs['exons'][c_gene] + ") doesn't suggest "
-                                      "there should be one - this could indicate incorrect exon annotations, "
-                                      "potentially resulting in an out of frame constant region. ")
+                    if "UTR" not in c_region_motifs["exons"][c_gene]:
+                        warnings.warn(
+                            "Warning: the constant region '"
+                            + c_gene
+                            + "' being used contains a stop codon, "
+                            "yet its exon label ("
+                            + c_region_motifs["exons"][c_gene]
+                            + ") doesn't suggest "
+                            "there should be one - this could indicate incorrect exon annotations, "
+                            "potentially resulting in an out of frame constant region. "
+                        )
 
                 break
 
@@ -515,14 +596,16 @@ def determine_v_interface(cdr3aa, n_term_nuc, n_term_amino):
         n_term_cdr3_chunk = cdr3aa[:c]
         for v in range(10):
             aa_l = len(n_term_amino)
-            v_match = n_term_amino[aa_l - (c + v):aa_l - v]
+            v_match = n_term_amino[aa_l - (c + v) : aa_l - v]
             if n_term_cdr3_chunk == v_match:
-                n_term_nt_trimmed = n_term_nuc[:(aa_l * 3) - (v * 3)]
+                n_term_nt_trimmed = n_term_nuc[: (aa_l * 3) - (v * 3)]
                 cdr3_n_offset = c
                 return n_term_nt_trimmed, cdr3_n_offset
 
     # Shouldn't be able to throw an error, as the presence of an N terminal cysteine should be established, but in case
-    raise Exception("Unable to locate N terminus of CDR3 in V gene correctly. Please ensure sequence plausibility. ")
+    raise Exception(
+        "Unable to locate N terminus of CDR3 in V gene correctly. Please ensure sequence plausibility. "
+    )
 
 
 def find_cdr3_c_term(cdr3_chunk, j_seq, strict):
@@ -535,21 +618,25 @@ def find_cdr3_c_term(cdr3_chunk, j_seq, strict):
     """
     i = j_seq.find(cdr3_chunk)
     while i != -1:
-
         if strict:
-            if j_seq[i + len(cdr3_chunk)] == 'G' and j_seq[i + len(cdr3_chunk) + 2] == 'G':
+            if (
+                j_seq[i + len(cdr3_chunk)] == "G"
+                and j_seq[i + len(cdr3_chunk) + 2] == "G"
+            ):
                 yield i
 
         else:
-            if j_seq[i + len(cdr3_chunk)] == 'G':
+            if j_seq[i + len(cdr3_chunk)] == "G":
                 yield i
-            elif j_seq[i + len(cdr3_chunk) + 2] == 'G':
+            elif j_seq[i + len(cdr3_chunk) + 2] == "G":
                 yield i
 
-        i = j_seq.find(cdr3_chunk, i+1)
+        i = j_seq.find(cdr3_chunk, i + 1)
 
 
-def determine_j_interface(cdr3_cterm_aa, c_term_nuc, c_term_amino, gl_nt_j_len, j_warning_threshold):
+def determine_j_interface(
+    cdr3_cterm_aa, c_term_nuc, c_term_amino, gl_nt_j_len, j_warning_threshold
+):
     """
     Determine germline J contribution, and subtract from the the CDR3 (to leave just non-templated residues)
     Starts with the whole CDR3 (that isn't contributed by V) and looks for successively N-terminal truncated
@@ -571,43 +658,66 @@ def determine_j_interface(cdr3_cterm_aa, c_term_nuc, c_term_amino, gl_nt_j_len, 
         c_term_cdr3_chunk = cdr3_cterm_aa[-c:]
 
         # Look for the decreasing chunks of the CDR3 in the theoretical translation of this J gene as germline
-        search = [x for x in find_cdr3_c_term(c_term_cdr3_chunk, c_term_amino[:search_len], False)]
+        search = [
+            x
+            for x in find_cdr3_c_term(
+                c_term_cdr3_chunk, c_term_amino[:search_len], False
+            )
+        ]
 
         if search:
             if len(search) == 1:
                 cdr3_c_end = search[0]
 
-                c_term_nt_trimmed = c_term_nuc[cdr3_c_end * 3:]
+                c_term_nt_trimmed = c_term_nuc[cdr3_c_end * 3 :]
 
                 # Add a warning if the detected J match is too far or too shore
                 if cdr3_c_end > 22:
-                    warnings.warn("Warning: germline match \'" + c_term_cdr3_chunk + "\' was found " +
-                                  str(search.start()) + " residues past the start of the J, "
-                                  "which is an extremely unlikely TCR. ")
+                    warnings.warn(
+                        "Warning: germline match '"
+                        + c_term_cdr3_chunk
+                        + "' was found "
+                        + str(search.start())
+                        + " residues past the start of the J, "
+                        "which is an extremely unlikely TCR. "
+                    )
 
                 if c <= j_warning_threshold:
-                    warnings.warn("Note: while a C-terminal CDR3:J germline match has been found, it was only the "
-                                  "string \"" + c_term_cdr3_chunk + "\". ")
+                    warnings.warn(
+                        "Note: while a C-terminal CDR3:J germline match has been found, it was only the "
+                        'string "' + c_term_cdr3_chunk + '". '
+                    )
 
             # If no single match found using the non-strict conserved J motif pattern (G..|..G), use the strict GXG
             elif len(search) > 1 and len(c_term_cdr3_chunk) == 1:
-                warnings.warn("Note: while a C-terminal CDR3:J germline match has been found, it was only the string "
-                              "\"" + c_term_cdr3_chunk + "\", which occurs in two positions. ")
+                warnings.warn(
+                    "Note: while a C-terminal CDR3:J germline match has been found, it was only the string "
+                    '"' + c_term_cdr3_chunk + '", which occurs in two positions. '
+                )
 
-                search2 = [x for x in find_cdr3_c_term(c_term_cdr3_chunk, c_term_amino[:search_len], True)]
+                search2 = [
+                    x
+                    for x in find_cdr3_c_term(
+                        c_term_cdr3_chunk, c_term_amino[:search_len], True
+                    )
+                ]
 
                 if len(search2) == 1:
                     cdr3_c_end = search2[0]
-                    c_term_nt_trimmed = c_term_nuc[cdr3_c_end * 3:]
+                    c_term_nt_trimmed = c_term_nuc[cdr3_c_end * 3 :]
 
                 else:
-                    raise ValueError("CDR3 seemingly deleted up to/past conserved CDR3 junction terminating residue, "
-                                     "but multiple motif hits found - unable to locate C terminus of CDR3. ")
+                    raise ValueError(
+                        "CDR3 seemingly deleted up to/past conserved CDR3 junction terminating residue, "
+                        "but multiple motif hits found - unable to locate C terminus of CDR3. "
+                    )
 
             return c_term_nt_trimmed, len(cdr3_cterm_aa) - c
 
     # Shouldn't be able to get here to throw an error, but just in case
-    raise ValueError("Unable to locate C terminus of CDR3 in J gene correctly. Please ensure sequence plausibility. ")
+    raise ValueError(
+        "Unable to locate C terminus of CDR3 in J gene correctly. Please ensure sequence plausibility. "
+    )
 
 
 def get_codon_frequencies(path_to_freq_file):
@@ -619,7 +729,14 @@ def get_codon_frequencies(path_to_freq_file):
     codon_usage = coll.defaultdict(nest_counter)
     with open(path_to_freq_file) as in_file:
         for line in in_file:
-            cleaned = [x for x in re.sub(r'\(.+?\)', '', line.rstrip()).upper().replace('U', 'T').split(' ') if x]
+            cleaned = [
+                x
+                for x in re.sub(r"\(.+?\)", "", line.rstrip())
+                .upper()
+                .replace("U", "T")
+                .split(" ")
+                if x
+            ]
             if len(cleaned) % 2 != 0:
                 raise ValueError("Error in codon usage file - unexpected format.")
             if len(cleaned) == 0:
@@ -642,16 +759,21 @@ def get_optimal_codons(specified_cu_file, species):
     if specified_cu_file:
         path_to_cu_file = specified_cu_file
     else:
-        path_to_cu_file = os.path.join(data_dir, 'kazusa', species + '.txt')
+        path_to_cu_file = os.path.join(data_dir, "kazusa", species + ".txt")
 
     if not os.path.isfile(path_to_cu_file):
-        warnings.warn("Could not find a codon frequency file at this path: " + path_to_cu_file
-                      + ". Defaulting to the human table file.")
-        path_to_cu_file = os.path.join(data_dir, 'kazusa', 'HUMAN.txt')
+        warnings.warn(
+            "Could not find a codon frequency file at this path: "
+            + path_to_cu_file
+            + ". Defaulting to the human table file."
+        )
+        path_to_cu_file = os.path.join(data_dir, "kazusa", "HUMAN.txt")
 
     codon_usage = get_codon_frequencies(path_to_cu_file)
     if len(codon_usage) < 20:
-        warnings.warn("Warning: incomplete codon usage file input - back translation may fail! ")
+        warnings.warn(
+            "Warning: incomplete codon usage file input - back translation may fail! "
+        )
 
     out_dict = coll.defaultdict()
     for residue in codon_usage:
@@ -671,19 +793,18 @@ def get_j_motifs(species):
     J gene/Residue/Confident? (with two later fields of Motif/Position(
     """
 
-    j_file = os.path.join(data_dir, species, 'J-region-motifs.tsv')
+    j_file = os.path.join(data_dir, species, "J-region-motifs.tsv")
 
     residues = coll.defaultdict()
     low_confidence = []
 
-    with open(j_file, 'r') as in_file:
-
+    with open(j_file, "r") as in_file:
         line_count = 0
         for line in in_file:
-            bits = line.rstrip().split('\t')
+            bits = line.rstrip().split("\t")
             if line_count != 0:
                 residues[bits[0]] = bits[1]
-                if bits[2] != 'Y':
+                if bits[2] != "Y":
                     low_confidence.append(bits[0])
             line_count += 1
 
@@ -700,23 +821,26 @@ def get_c_motifs(species):
     That file should contain a header, with columns consisting of: C gene/Exons/Start motif/Stop codon motif
     """
 
-    c_file = os.path.join(data_dir, species, 'C-region-motifs.tsv')
+    c_file = os.path.join(data_dir, species, "C-region-motifs.tsv")
 
-    constant_motifs = {'start': coll.defaultdict(), 'stop': coll.defaultdict(), 'exons': coll.defaultdict()}
+    constant_motifs = {
+        "start": coll.defaultdict(),
+        "stop": coll.defaultdict(),
+        "exons": coll.defaultdict(),
+    }
 
-    with open(c_file, 'r') as in_file:
-
+    with open(c_file, "r") as in_file:
         line_count = 0
         for line in in_file:
-            bits = line.rstrip().split('\t')
+            bits = line.rstrip().split("\t")
             if line_count != 0:
                 # Record exon configuration
-                constant_motifs['exons'][bits[0]] = bits[1]
+                constant_motifs["exons"][bits[0]] = bits[1]
                 # Define a 'start' motif (which gives the correct translation of the start of the C, for frame-finding)
-                constant_motifs['start'][bits[0]] = bits[2]
+                constant_motifs["start"][bits[0]] = bits[2]
                 # If provided, also define a 'stop' motif, which gives a chunk of seq to find in-frame stop codons
                 if len(bits) > 3:
-                    constant_motifs['stop'][bits[0]] = bits[3]
+                    constant_motifs["stop"][bits[0]] = bits[3]
             line_count += 1
 
     return constant_motifs
@@ -729,7 +853,7 @@ def rev_translate(amino_acid_seq, codon_usage_dict):
     :return: Corresponding nucleotide sequence
     """
 
-    return ''.join([codon_usage_dict[x] for x in amino_acid_seq])
+    return "".join([codon_usage_dict[x] for x in amino_acid_seq])
 
 
 def get_linker_dict():
@@ -738,13 +862,16 @@ def get_linker_dict():
     """
 
     if not os.path.isfile(linkers_file):
-        raise IOError(linkers_file + " not detected - please check linker file is present and run again. ")
+        raise IOError(
+            linkers_file
+            + " not detected - please check linker file is present and run again. "
+        )
 
     else:
         linkers = coll.defaultdict()
-        with open(linkers_file, 'r') as in_file:
+        with open(linkers_file, "r") as in_file:
             for line in in_file:
-                bits = line.rstrip().split('\t')
+                bits = line.rstrip().split("\t")
                 linkers[bits[0]] = bits[1]
 
         return linkers
@@ -763,15 +890,21 @@ def get_linker_seq(linker_text, linker_dict):
     # Allows users to input their own custom DNA sequences
     elif dna_check(linker_text):
         if len(linker_text) % 3 != 0:
-            warnings.warn("Warning: length of linker sequence \'"
-                          + linker_text + "\' is not divisible by 3; "
-                          "if this was supposed to be a skip sequence the downstream gene will not be in frame. ")
+            warnings.warn(
+                "Warning: length of linker sequence '"
+                + linker_text
+                + "' is not divisible by 3; "
+                "if this was supposed to be a skip sequence the downstream gene will not be in frame. "
+            )
 
         return linker_text
 
     else:
-        raise ValueError("Error: " + linker_text +
-                         " is not a recognised pre-coded linker sequence and does not seem to be DNA. ")
+        raise ValueError(
+            "Error: "
+            + linker_text
+            + " is not a recognised pre-coded linker sequence and does not seem to be DNA. "
+        )
 
 
 def dna_check(possible_dna):
@@ -780,7 +913,7 @@ def dna_check(possible_dna):
     :return: True/False
     """
 
-    return set(possible_dna.upper()).issubset({'A', 'C', 'G', 'T', 'N'})
+    return set(possible_dna.upper()).issubset({"A", "C", "G", "T", "N"})
 
 
 def tweak_thimble_input(stitch_dict):
@@ -789,8 +922,8 @@ def tweak_thimble_input(stitch_dict):
     :return: Fixed stitchr dict (species capitalised, TCR names blanked)
     """
 
-    stitch_dict['name'] = ''
-    for region in ['v', 'j', 'cdr3', 'c']:
+    stitch_dict["name"] = ""
+    for region in ["v", "j", "cdr3", "c"]:
         stitch_dict[region] = stitch_dict[region].upper()
 
     return stitch_dict
@@ -801,10 +934,10 @@ def opener(in_file):
     :param in_file: path to file to be opened
     :return: the appropriate file opening command (open or gzip.open)
     """
-    if in_file.endswith('.gz'):
-        return gzip.open(in_file, 'rt')
+    if in_file.endswith(".gz"):
+        return gzip.open(in_file, "rt")
     else:
-        return open(in_file, 'r')
+        return open(in_file, "r")
 
 
 def translate_nt(nt_seq):
@@ -813,9 +946,9 @@ def translate_nt(nt_seq):
     :return: corresponding amino acid sequence
     """
 
-    aa_seq = ''
+    aa_seq = ""
     for i in range(0, len(nt_seq), 3):
-        codon = nt_seq[i:i+3].upper()
+        codon = nt_seq[i : i + 3].upper()
         if len(codon) == 3:
             try:
                 aa_seq += codons[codon]
@@ -834,7 +967,14 @@ def check_suffix_prefix(five_prime_seq, three_prime_seq):
     """
 
     steps = range(min(len(five_prime_seq), len(three_prime_seq)) - 1, -1, -1)
-    return next((three_prime_seq[:n] for n in steps if five_prime_seq[-n:] == three_prime_seq[:n]), '')
+    return next(
+        (
+            three_prime_seq[:n]
+            for n in steps
+            if five_prime_seq[-n:] == three_prime_seq[:n]
+        ),
+        "",
+    )
 
 
 def find_v_overlap(v_germline, nt_cdr3):
@@ -846,20 +986,23 @@ def find_v_overlap(v_germline, nt_cdr3):
     Note that this function allows for a very generous (supra-physiological) upper limit of 50 deletions from the V
     """
 
-    longest_overlap = ''
+    longest_overlap = ""
     index_longest = 0
     # Have to count backwards from the the end of the V; only need to go as far as the provided nt_cdr3 length (although
     # some of that will contain J gene residues)
     # Note that the positive check is against the outside chance someone provides an inconsistently short V gene
-    for i in [x for x in range(len(v_germline) - 1, len(v_germline) - len(nt_cdr3), -1) if x > 0]:
-
+    for i in [
+        x
+        for x in range(len(v_germline) - 1, len(v_germline) - len(nt_cdr3), -1)
+        if x > 0
+    ]:
         tmp_fp = v_germline[:i]
         overlap = check_suffix_prefix(tmp_fp, nt_cdr3)
         if len(overlap) > len(longest_overlap):
             longest_overlap = overlap
             index_longest = i
 
-    return v_germline[:index_longest - len(longest_overlap)], longest_overlap
+    return v_germline[: index_longest - len(longest_overlap)], longest_overlap
 
 
 def find_j_overlap(nt_cdr3, j_germline):
@@ -869,7 +1012,7 @@ def find_j_overlap(nt_cdr3, j_germline):
     :return: j_germline sequence running from (but not including) where it overlaps with the nt_cdr3 sequence
     """
 
-    longest_overlap = ''
+    longest_overlap = ""
     index_longest = 0
     for i in range(len(j_germline)):
         tmp_j = j_germline[i:]
@@ -878,43 +1021,108 @@ def find_j_overlap(nt_cdr3, j_germline):
             longest_overlap = overlap
             index_longest = i
 
-    return j_germline[index_longest + len(longest_overlap):]
+    return j_germline[index_longest + len(longest_overlap) :]
 
 
 def main():
-    print("Please use the appropriate 'stitchr', 'thimble', 'gui_stitchr' or 'stitchrdl' command.")
+    print(
+        "Please use the appropriate 'stitchr', 'thimble', 'gui_stitchr' or 'stitchrdl' command."
+    )
 
 
-codons = {'AAA': 'K', 'AAC': 'N', 'AAG': 'K', 'AAT': 'N',
-          'ACA': 'T', 'ACC': 'T', 'ACG': 'T', 'ACT': 'T',
-          'AGA': 'R', 'AGC': 'S', 'AGG': 'R', 'AGT': 'S',
-          'ATA': 'I', 'ATC': 'I', 'ATG': 'M', 'ATT': 'I',
-          'CAA': 'Q', 'CAC': 'H', 'CAG': 'Q', 'CAT': 'H',
-          'CCA': 'P', 'CCC': 'P', 'CCG': 'P', 'CCT': 'P',
-          'CGA': 'R', 'CGC': 'R', 'CGG': 'R', 'CGT': 'R',
-          'CTA': 'L', 'CTC': 'L', 'CTG': 'L', 'CTT': 'L',
-          'GAA': 'E', 'GAC': 'D', 'GAG': 'E', 'GAT': 'D',
-          'GCA': 'A', 'GCC': 'A', 'GCG': 'A', 'GCT': 'A',
-          'GGA': 'G', 'GGC': 'G', 'GGG': 'G', 'GGT': 'G',
-          'GTA': 'V', 'GTC': 'V', 'GTG': 'V', 'GTT': 'V',
-          'TAA': '*', 'TAC': 'Y', 'TAG': '*', 'TAT': 'Y',
-          'TCA': 'S', 'TCC': 'S', 'TCG': 'S', 'TCT': 'S',
-          'TGA': '*', 'TGC': 'C', 'TGG': 'W', 'TGT': 'C',
-          'TTA': 'L', 'TTC': 'F', 'TTG': 'L', 'TTT': 'F',
-          # Plus N-padded codons, to account for cases where someone stitched with a len(5' extension) % 3 != 0
-          'NNA': '_', 'NNC': '_', 'NNG': '_', 'NNT': '_',
-          'NAA': '_', 'NAC': '_', 'NAT': '_', 'NAG': '_',
-          'NCA': '_', 'NCC': '_', 'NCT': '_', 'NCG': '_',
-          'NTA': '_', 'NTC': '_', 'NTT': '_', 'NTG': '_',
-          'NGA': '_', 'NGC': '_', 'NGT': '_', 'NGG': '_'}
+codons = {
+    "AAA": "K",
+    "AAC": "N",
+    "AAG": "K",
+    "AAT": "N",
+    "ACA": "T",
+    "ACC": "T",
+    "ACG": "T",
+    "ACT": "T",
+    "AGA": "R",
+    "AGC": "S",
+    "AGG": "R",
+    "AGT": "S",
+    "ATA": "I",
+    "ATC": "I",
+    "ATG": "M",
+    "ATT": "I",
+    "CAA": "Q",
+    "CAC": "H",
+    "CAG": "Q",
+    "CAT": "H",
+    "CCA": "P",
+    "CCC": "P",
+    "CCG": "P",
+    "CCT": "P",
+    "CGA": "R",
+    "CGC": "R",
+    "CGG": "R",
+    "CGT": "R",
+    "CTA": "L",
+    "CTC": "L",
+    "CTG": "L",
+    "CTT": "L",
+    "GAA": "E",
+    "GAC": "D",
+    "GAG": "E",
+    "GAT": "D",
+    "GCA": "A",
+    "GCC": "A",
+    "GCG": "A",
+    "GCT": "A",
+    "GGA": "G",
+    "GGC": "G",
+    "GGG": "G",
+    "GGT": "G",
+    "GTA": "V",
+    "GTC": "V",
+    "GTG": "V",
+    "GTT": "V",
+    "TAA": "*",
+    "TAC": "Y",
+    "TAG": "*",
+    "TAT": "Y",
+    "TCA": "S",
+    "TCC": "S",
+    "TCG": "S",
+    "TCT": "S",
+    "TGA": "*",
+    "TGC": "C",
+    "TGG": "W",
+    "TGT": "C",
+    "TTA": "L",
+    "TTC": "F",
+    "TTG": "L",
+    "TTT": "F",
+    # Plus N-padded codons, to account for cases where someone stitched with a len(5' extension) % 3 != 0
+    "NNA": "_",
+    "NNC": "_",
+    "NNG": "_",
+    "NNT": "_",
+    "NAA": "_",
+    "NAC": "_",
+    "NAT": "_",
+    "NAG": "_",
+    "NCA": "_",
+    "NCC": "_",
+    "NCT": "_",
+    "NCG": "_",
+    "NTA": "_",
+    "NTC": "_",
+    "NTT": "_",
+    "NTG": "_",
+    "NGA": "_",
+    "NGC": "_",
+    "NGT": "_",
+    "NGG": "_",
+}
 
-regions = {'l': 'LEADER',
-           'v': 'VARIABLE',
-           'j': 'JOINING',
-           'c': 'CONSTANT'
-           }
+regions = {"l": "LEADER", "v": "VARIABLE", "j": "JOINING", "c": "CONSTANT"}
 
-citation = 'James M Heather, Matthew J Spindler, Marta Herrero Alonso, Yifang Ivana Shui, David G Millar, ' \
-           'David S Johnson, Mark Cobbold, Aaron N Hata, Stitchr: stitching coding TCR nucleotide sequences from ' \
-           'V/J/CDR3 information, Nucleic Acids Research, Volume 50, Issue 12, 8 July 2022, Page e68, ' \
-           'https://doi.org/10.1093/nar/gkac190'
+citation = (
+    "James M Heather, Matthew J Spindler, Marta Herrero Alonso, Yifang Ivana Shui, David G Millar, "
+    "David S Johnson, Mark Cobbold, Aaron N Hata, Stitchr: stitching coding TCR nucleotide sequences from "
+    "V/J/CDR3 information, Nucleic Acids Research, Volume 50, Issue 12, 8 July 2022, Page e68, "
+    "https://doi.org/10.1093/nar/gkac190"
+)
