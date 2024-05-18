@@ -30,7 +30,7 @@ __email__ = "jheather@mgh.harvard.edu"
 sys.tracebacklimit = 0  # comment when debugging
 
 # change the path to the repo directory on Streamlit Cloud
-data_files = Path("/mount/src/receptorgpt/stitchr_data")
+data_files = Path("stitchr_data")
 additional_genes_file = str(data_files / "additional-genes.fasta")
 linkers_file = str(data_files / "linkers.tsv")
 data_dir = os.path.dirname(additional_genes_file)
